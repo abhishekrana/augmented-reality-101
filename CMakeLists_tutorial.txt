@@ -1,0 +1,162 @@
+# PROJECT_NAME		The name of the project set by the current project().
+# CMAKE_PROJECT_NAME	The name of the first project set by the project() command, i.e. the top level project.
+# PROJECT_SOURCE_DIR	The source director of the current project.
+# PROJECT_BINARY_DIR	The build directory for the current project.
+# name_SOURCE_DIR		The source directory of the project called "name". In this example the source directories created would be sublibrary1_SOURCE_DIR, sublibrary2_SOURCE_DIR, and subbinary_SOURCE_DIR
+# name_BINARY_DIR		The binary directory of the project called "name". In this example the binary directories created would be sublibrary1_BINARY_DIR, sublibrary2_BINARY_DIR, and subbinary_BINARY_DIR
+
+# $ cmake --version
+cmake_minimum_required(VERSION 3.5)
+
+# Set the project name
+project (hello_bin)
+
+
+# available since CMake v3.1
+# set the C++ standard to C++ 11
+set(CMAKE_CXX_STANDARD 11)
+
+
+############################################################
+# Add packages
+############################################################
+## find_package() function. This will search for CMake modules in the format "FindXXX.cmake" from the list of folders in CMAKE_MODULE_PATH. On linux the default search path will include /usr/share/cmake/Modules
+# find a boost install with the libraries filesystem and system
+find_package(Boost 1.36.0 REQUIRED COMPONENTS filesystem system)
+if(Boost_FOUND)
+    message ("boost found")
+else()
+    message (FATAL_ERROR "Cannot find Boost")
+endif()
+
+############################################################
+# Create a static library
+############################################################
+
+## This will be used to create a static library with the name libhello_library.a with the sources in the add_library call.
+## we pass the source files directly to the add_library call, as recommended for modern CMake.
+#Generate the static library from the library sources
+add_library(hello_library STATIC
+    lib/static/src/hello.cpp
+)
+
+## For public headers it is often a good idea to have your include folder be "namespaced" with sub-directories.
+## The directory passed to target_include_directories will be the root of your include directory tree and your C++ files should include the path from there to your header.
+## #include "static/hello.h"
+## Using this method means that there is less chance of header filename clashes when you use multiple libraries in your project.
+target_include_directories(hello_library
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/lib/static/include
+)
+
+############################################################
+# Create a shared library
+############################################################
+#Generate the shared library from the library sources
+add_library(hellod_library SHARED
+    lib/shared/src/hellod.cpp
+)
+add_library(hellod::library ALIAS hellod_library)
+
+target_include_directories(hellod_library
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/lib/shared/include
+)
+
+
+
+
+############################################################
+# Create an executable
+############################################################
+
+# Create a sources variable with a link to all cpp files to compile
+set(SOURCES
+    src/main.cpp
+	#src/ab.cpp
+)
+
+
+## For modern CMake it is NOT recommended to use a variable for sources. Insead it is typical to directly declare the sources in the add_xxx function.
+## This is particularly important for glob commands which may not always show you the correct results if you add a new source file.
+## file(GLOB SOURCES "src/*.cpp")
+
+
+# Add an executable with the above sources
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+
+# Set a default C++ compile flag
+# Similarly to CMAKE_CXX_FLAGS other options include:
+#     Setting C compiler flags using CMAKE_C_FLAGS
+#     Setting linker flags using CMAKE_LINKER_FLAGS.
+# The values CACHE STRING "Set C++ Compiler Flags" FORCE from the above command are used to force this variable to be set in the CMakeCache.txt file.
+# Once set the CMAKE_C_FLAGS and CMAKE_CXX_FLAGS will set a compler flag / definiton globally for all targets in this directory or any included sub-directories. 
+# This method is not recommended for general usage now and the target_compile_definitions function is preferred.
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEX1" CACHE STRING "Set C++ Compiler Flags" FORCE)
+
+
+# The recommended way to set C++ flags in modern CMake is to use per-target flags which can be populated to other targets through the target_compile_definitions() function. 
+# This will populate the INTERFACE_COMPILE_DEFINITIONS for the library and push the definition to the linked target depending on the scope.
+# This will cause the compiler to add the definition -DEX3 when compiling the target.
+# In the target was a library, and the scope PUBLIC or INTERFACE has been choosen the definition would also be included in any executables that link this target.
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE EX3
+)
+
+## This tells CMake to link the hello_library against the hello_binary executable during link time. It will also propogate any include directries with PUBLIC or INTERFACE scope from the linked library target.
+## /usr/bin/c++ CMakeFiles/hello_binary.dir/src/main.cpp.o -o hello_binary -rdynamic libhello_library.a
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        hello_library
+		#hellod_library
+		hellod::library
+		${Boost_SYSTEM_LIBRARY}
+		${Boost_FILESYSTEM_LIBRARY}
+)
+
+
+## Set the directories that should be included in the build command for this target
+## when running g++ these will be included as -I/directory/path/
+## The PRIVATE identifier specifies the scope of the include
+# This will cause the included directory used in the following places:
+#     When compiling the library
+#     When compiling any additional target that links the library.
+# The meaning of scopes are:
+#     PRIVATE - the directory is added to this target’s include directories
+#     INTERFACE - the directory is added to the include directories for any targets that link this library.
+#     PUBLIC - As above, it is included in this library and also any targets that link this library.
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+		${Boost_INCLUDE_DIRS}
+		# Most modern CMake libraries export ALIAS targets in their module files. The benefit of imported targets are that they can also populate include directories and linked libraries.
+		# Alias/Imported targets are read-only targets that are exported by FindXXX modules.
+		# For example, starting from v3.5+ of CMake, the Boost module supports this. Similar to using your own ALIAS target for libraires, an ALIAS in a module can make referencing found targets eaiser.
+		# In the case of Boost, all targets are exported using the Boost:: identifier and then the name of the subsystem. For example you can use:
+		#     Boost::boost for header only libraries
+		#     Boost::system for the boost system library.
+		#     Boost::filesystem for filesystem library.
+		# As with your own targets, these targets include their dependencies, so linking against Boost::filesystem will automatically add Boost::boost and Boost::system dependencies.
+		# This will automtaically link the Boost::filesystem and Boost::system libraries while also including the Boost include directories.
+		#Boost::filesystem		# Alias targets in CMake v3.5+
+)
+
+## Print the list of known compile features for this version of CMake
+message("List of compile features: ${CMAKE_CXX_COMPILE_FEATURES}")
+
+## set the C++ standard to the approriate standard for using auto
+#target_compile_features(hello_bin PUBLIC cxx_auto_type)
+
+
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message("Setting build type to 'RelWithDebInfo' as none was specified.")
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "MinSizeRel" "RelWithDebInfo")
+endif()
+
+
+
