@@ -36,24 +36,26 @@ target_compile_definitions(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
-        ${PROJECT_SOURCE_DIR}/lib/glew-2.1.0/install/include
-        ${PROJECT_SOURCE_DIR}/lib/glfw-3.2.1/install/include
-        ${PROJECT_SOURCE_DIR}/lib/glm/install/include
-		${Boost_INCLUDE_DIRS}
+		#${PROJECT_SOURCE_DIR}/lib/glew-2.1.0/install/include
+		#${PROJECT_SOURCE_DIR}/lib/glfw-3.2.1/install/include
+		#${PROJECT_SOURCE_DIR}/lib/glm/install/include
+		#${Boost_INCLUDE_DIRS}
 )
 
 
 ############################################################
 # Link libraries
 ############################################################
-find_library(GLEW_LIBRARY GLEW HINTS /home/abhishek/Abhishek/git/augmented-reality-101/lib/glew-2.1.0/install/lib/)
-find_library(GLFW3_LIBRARY glfw3 HINTS /home/abhishek/Abhishek/git/augmented-reality-101/lib/glfw-3.2.1/install/lib/)
+#find_library(GLEW_LIBRARY GLEW HINTS /home/abhishek/Abhishek/git/augmented-reality-101/lib/glew-2.1.0/install/lib/)
+#find_library(GLFW3_LIBRARY glfw3 HINTS /home/abhishek/Abhishek/git/augmented-reality-101/lib/glfw-3.2.1/install/lib/)
+find_library(GLEW_LIBRARY GLEW)
+find_library(GLFW3_LIBRARY glfw3)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
 		${GLEW_LIBRARY}
-		GL GLU X11 Xxf86vm Xrandr pthread Xi dl
 		glfw3
+        GL GLU X11 Xxf86vm Xrandr pthread Xi dl Xcursor Xinerama
 		# ${GLFW3_LIBRARY}
 		# ${PROJECT_SOURCE_DIR}/lib/glm/install/lib
 		# ${PROJECT_SOURCE_DIR}/lib/glfw-3.2.1/install/lib
