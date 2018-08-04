@@ -68,7 +68,7 @@ RUN wget https://github.com/g-truc/glm/releases/download/0.9.9.0/glm-0.9.9.0.zip
 	make && \
 	make install
 
-## Install GLM
+## Install GLU
 RUN wget ftp://ftp.freedesktop.org/pub/mesa/glu/glu-9.0.0.tar.bz2 && \
 	tar -xjvf glu-9.0.0.tar.bz2 && \
 	rm -rf glu-9.0.0.tar.bz2 && \
